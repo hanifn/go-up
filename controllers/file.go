@@ -5,6 +5,9 @@ import (
     "net/http"
     "encoding/json"
     "fmt"
+    "os"
+    "io"
+    "bufio"
 )
 
 func GetFile(w http.ResponseWriter, req *http.Request) {
@@ -25,5 +28,37 @@ func Upload(w http.ResponseWriter, req *http.Request) {
     }
     defer file.Close()
 
-    fmt.Printf("%v\n", handler)
+    // create new file on filesystem
+    f, err := os.OpenFile("./storage/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+    if err != nil {
+        json.NewEncoder(w).Encode(err)
+        return
+    }
+    defer f.Close()
+
+    // copy uploaded file to new file
+    io.Copy(f, file)
+
+    fileModel := models.NewFile(
+        handler.Filename,
+        "./storage/"+handler.Filename,
+        handler.Header.Get("Content-Type"),
+    )
+
+    json.NewEncoder(w).Encode(fileModel)
+}
+
+func Download(w http.ResponseWriter, req *http.Request) {
+    f, err := os.Open("./storage/IMG_1928.JPG")
+
+    if err != nil {
+        json.NewEncoder(w).Encode(err)
+        return
+    }
+    defer f.Close()
+
+    w.Header().Add("Content-Type", "image/jpeg")
+
+    br := bufio.NewReader(f)
+    br.WriteTo(w)
 }

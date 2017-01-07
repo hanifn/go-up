@@ -40,7 +40,7 @@ var routes = Routes{
         "GetFile",
         "GET",
         "/files/{id}",
-        controllers.GetFile,
+        controllers.Download,
     },
     Route{
         "UploadFile",

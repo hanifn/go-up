@@ -1,0 +1,4 @@
+# Ignore storage files
+storage/**
+!uploads/**/
+!.gitkeep
