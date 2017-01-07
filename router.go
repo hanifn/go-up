@@ -20,7 +20,7 @@ func NewRouter() *mux.Router {
     router := mux.NewRouter().StrictSlash(true)
     for _, route := range routes {
         router.
-        Methods(route.Method).
+            Methods(route.Method).
             Path(route.Pattern).
             Name(route.Name).
             Handler(route.HandlerFunc)
@@ -37,6 +37,12 @@ var routes = Routes{
         Index,
     },
     Route{
+        "GetFiles",
+        "GET",
+        "/files",
+        controllers.GetFiles,
+    },
+    Route{
         "GetFile",
         "GET",
         "/files/{id}",
@@ -47,5 +53,11 @@ var routes = Routes{
         "POST",
         "/upload",
         controllers.Upload,
+    },
+    Route{
+        "DeleteFile",
+        "DELETE",
+        "/files/{id}",
+        controllers.Delete,
     },
 }
