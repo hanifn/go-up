@@ -10,6 +10,7 @@ func TestNewFile(t *testing.T) {
 		name     string
 		path     string
 		fileType string
+        desc string
 	}
 	tests := []struct {
 		name string
@@ -17,11 +18,11 @@ func TestNewFile(t *testing.T) {
 		want File
 	}{
 	// TODO: Add test cases.
-		{"test1", args{"file1", "path/to/file1", "text"}, File{0, "", "file1", "path/to/file1", "text"}},
+		{"test1", args{"file1", "path/to/file1", "text", "description"}, File{0, "", "file1", "path/to/file1", "text", "description"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewFile(tt.args.name, tt.args.path, tt.args.fileType); !reflect.DeepEqual(got, tt.want) {
+			if got := NewFile(tt.args.name, tt.args.path, tt.args.fileType, tt.args.desc); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewFile() = %v, want %v", got, tt.want)
 			}
 		})

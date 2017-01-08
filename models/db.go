@@ -31,7 +31,8 @@ func createTables(db *sql.DB) {
 		hash VARCHAR(64) NULL,
         name VARCHAR(64) NULL,
         path VARCHAR(64) NULL,
-        type VARCHAR(64) NULL
+        type VARCHAR(64) NULL,
+        description TEXT NULL
 	);
 	`
 

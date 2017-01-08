@@ -6,16 +6,17 @@ import (
 )
 
 type File struct {
-    Id int `json:"id"`
+    Id int `json:"-"`
     HashId string `json:"hash"`
     Name string `json:"name"`
-    Path string `json:"path"`
-    Type string `json:"type"`
+    Path string `json:"-"`
+    Type string `json:"-"`
+    Description string `json:"description"`
 }
 
 type Files []File
 
-func NewFile(name string, path string, fileType string) File {
+func NewFile(name string, path string, fileType string, desc string) File {
     // default id to zero before saving to DB
     return File{
         Id: 0,
@@ -23,6 +24,7 @@ func NewFile(name string, path string, fileType string) File {
         Name: name,
         Path: path,
         Type: fileType,
+        Description: desc,
     }
 }
 
@@ -38,7 +40,7 @@ func GetFile(hash string) (File, error) {
     row := conn.QueryRow(sql, hash)
 
     var file File
-    err := row.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type)
+    err := row.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type, &file.Description)
     if err != nil {
         return File{}, err
     }
@@ -62,7 +64,7 @@ func GetFiles() ([]File, error) {
     var files []File
     for rows.Next() {
         file := File{}
-        err := rows.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type)
+        err := rows.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type, &file.Description)
         if err != nil {
             return files, err
         }
@@ -157,8 +159,9 @@ func (f *File) insert() error {
 	INSERT INTO files(
 		name,
 		path,
-		type
-	) values(?, ?, ?)
+		type,
+		description
+	) values(?, ?, ?, ?)
 	`
 
     stmt, err := conn.Prepare(sql)
@@ -168,7 +171,7 @@ func (f *File) insert() error {
     }
     defer stmt.Close()
 
-    result, err := stmt.Exec(f.Name, f.Path, f.Type)
+    result, err := stmt.Exec(f.Name, f.Path, f.Type, f.Description)
     if err != nil {
         fmt.Println("Insert exec error: %v", err)
         return err

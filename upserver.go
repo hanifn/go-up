@@ -4,7 +4,6 @@ import (
     "log"
     "net/http"
     "encoding/json"
-    "github.com/hanifn/go-up/models"
 )
 
 func main() {
@@ -14,9 +13,7 @@ func main() {
 }
 
 func Index(w http.ResponseWriter, req *http.Request) {
-    file := models.NewFile("File.txt", "/path/to/File.txt", "text")
-
-    json.NewEncoder(w).Encode(file)
+    json.NewEncoder(w).Encode("Nothing to see here")
 }
 
 type Error struct {
