@@ -96,6 +96,8 @@ func DeleteFile(hash string) error {
         return errors.New("No file deleted")
     }
 
+    os.Remove("./storage/"+hash)
+
     return nil
 }
 
