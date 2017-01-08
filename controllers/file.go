@@ -9,6 +9,8 @@ import (
     "bufio"
     "github.com/gorilla/mux"
     "github.com/hanifn/go-up/controllers/utils"
+    "strings"
+    "strconv"
 )
 
 func GetFiles(w http.ResponseWriter, req *http.Request) {
@@ -55,6 +57,31 @@ func Upload(w http.ResponseWriter, req *http.Request) {
     if err != nil {
         utils.JsonError(w, err, 400)
         return
+    }
+
+    // check if user provided resize params
+    resize := req.FormValue("resize")
+    if resize != "" {
+        dimensions := strings.Split(resize, "x")
+        width, err := strconv.Atoi(dimensions[0])
+        if err != nil {
+            fmt.Printf("%v\n", err)
+            utils.JsonError(w, "Error parsing resize dimensions", 400)
+            return
+        }
+        height, err := strconv.Atoi(dimensions[1])
+        if err != nil {
+            fmt.Printf("%v\n", err)
+            utils.JsonError(w, "Error parsing resize dimensions", 400)
+            return
+        }
+
+        err = fileModel.ResizeImage(width, height)
+        if err != nil {
+            fmt.Printf("%v\n", err)
+            utils.JsonError(w, "Error resizing file", 400)
+            return
+        }
     }
 
     utils.JsonResponse(w, fileModel)

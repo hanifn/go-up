@@ -3,6 +3,13 @@ package models
 import (
     "github.com/speps/go-hashids"
     "fmt"
+    "image"
+    "github.com/nfnt/resize"
+    "image/jpeg"
+    "image/png"
+    "os"
+    "errors"
+    "bufio"
 )
 
 type File struct {
@@ -83,10 +90,11 @@ func DeleteFile(hash string) error {
     WHERE hash = ?
     `
 
-    _, err := conn.Query(sql, hash)
-    if err != nil {
+    row := conn.QueryRow(sql, hash)
+    err := row.Scan()
+    if err == nil {
         fmt.Println("Delete error: %v", err)
-        return err
+        return errors.New("No file deleted")
     }
 
     return nil
@@ -187,4 +195,35 @@ func (f *File) insert() error {
     return nil
 }
 
+func (f *File) ResizeImage(w int, h int) error {
+    // make sure file is jpeg or png
+    if f.Type != "image/jpeg" && f.Type != "image/png" {
+        return errors.New("Not valid image file for resizing")
+    }
 
+    i, err := os.OpenFile(f.Path, os.O_RDWR, os.ModeAppend)
+    image, _, err := image.Decode(bufio.NewReader(i))
+    if err != nil {
+        fmt.Printf("Image decode error: %v\n", err)
+        return err
+    }
+    defer i.Close()
+
+    resized := resize.Resize(uint(w), uint(h), image, resize.Lanczos3)
+
+    // overwrite existing image
+    writer := bufio.NewWriter(i)
+    switch f.Type {
+    case "image/jpeg":
+        err = jpeg.Encode(writer, resized, nil)
+        break;
+    case "image/png":
+        err = png.Encode(writer, resized)
+        break;
+    }
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
