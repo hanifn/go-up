@@ -1,15 +1,14 @@
 package models
 
 import (
-    "github.com/speps/go-hashids"
     "fmt"
-    "image"
     "github.com/nfnt/resize"
     "image/jpeg"
     "image/png"
     "os"
     "errors"
-    "bufio"
+    "github.com/ventu-io/go-shortid"
+    "io"
 )
 
 type File struct {
@@ -23,11 +22,11 @@ type File struct {
 
 type Files []File
 
-func NewFile(name string, path string, fileType string, desc string) File {
+func NewFile(name string, hash string, path string, fileType string, desc string) File {
     // default id to zero before saving to DB
     return File{
         Id: 0,
-        HashId: "",
+        HashId: hash,
         Name: name,
         Path: path,
         Type: fileType,
@@ -93,36 +92,32 @@ func DeleteFile(hash string) error {
     row := conn.QueryRow(sql, hash)
     err := row.Scan()
     if err == nil {
-        fmt.Println("Delete error: %v", err)
+        fmt.Printf("Delete error: %v\n", err)
         return errors.New("No file deleted")
     }
 
     return nil
 }
 
-func (f *File) generateId() {
-    hd := hashids.NewData()
-    hd.Salt = "$qz&vzp#rwLNe4LV6dr3>o39ei?#Rhud"
-    hd.MinLength = 6
-    h := hashids.NewWithData(hd)
-    id, _ := h.Encode([]int{f.Id})
+func GenerateId() string {
+    sid, err := shortid.New(1, shortid.DefaultABC, 4532652356)
+    if err != nil {
+        panic(err)
+    }
 
-    f.HashId = id
+    return sid.MustGenerate()
 }
 
 func (f *File) Save() error {
     // If ID is 0 then call insert method to create new entry
-    // and generate new ID and saving it again.
     // else call update method to update existing entry
     if f.Id == 0 {
         err := f.insert()
         if err != nil {
             return err
         }
-        f.generateId()
 
-        f.Save()
-        fmt.Println("%v", f)
+        fmt.Printf("%v\n", f)
     } else {
         err := f.update()
         if err != nil {
@@ -146,14 +141,14 @@ func (f *File) update() error {
 
     stmt, err := conn.Prepare(sql)
     if err != nil {
-        fmt.Println("Update prepare error: %v", err)
+        fmt.Printf("Update prepare error: %v\n", err)
         return err
     }
     defer stmt.Close()
 
     _, err = stmt.Exec(f.HashId, f.Name, f.Path, f.Type, f.Id)
     if err != nil {
-        fmt.Println("Update exec error: %v", err)
+        fmt.Printf("Update exec error: %v\n", err)
         return err
     }
 
@@ -165,23 +160,24 @@ func (f *File) insert() error {
 
     sql := `
 	INSERT INTO files(
+	    hash,
 		name,
 		path,
 		type,
 		description
-	) values(?, ?, ?, ?)
+	) values(?, ?, ?, ?, ?)
 	`
 
     stmt, err := conn.Prepare(sql)
     if err != nil {
-        fmt.Println("Insert prepare error: %v", err)
+        fmt.Printf("Insert prepare error: %v\n", err)
         return err
     }
     defer stmt.Close()
 
-    result, err := stmt.Exec(f.Name, f.Path, f.Type, f.Description)
+    result, err := stmt.Exec(f.HashId, f.Name, f.Path, f.Type, f.Description)
     if err != nil {
-        fmt.Println("Insert exec error: %v", err)
+        fmt.Printf("Insert exec error: %v\n", err)
         return err
     }
 
@@ -195,35 +191,74 @@ func (f *File) insert() error {
     return nil
 }
 
-func (f *File) ResizeImage(w int, h int) error {
+func (f *File) ResizeImage(file io.Reader, w int, h int) error {
     // make sure file is jpeg or png
     if f.Type != "image/jpeg" && f.Type != "image/png" {
         return errors.New("Not valid image file for resizing")
     }
 
-    i, err := os.OpenFile(f.Path, os.O_RDWR, os.ModeAppend)
-    image, _, err := image.Decode(bufio.NewReader(i))
-    if err != nil {
-        fmt.Printf("Image decode error: %v\n", err)
-        return err
-    }
-    defer i.Close()
-
-    resized := resize.Resize(uint(w), uint(h), image, resize.Lanczos3)
-
-    // overwrite existing image
-    writer := bufio.NewWriter(i)
+    var err error
     switch f.Type {
     case "image/jpeg":
-        err = jpeg.Encode(writer, resized, nil)
+        err = resizeJpeg(file, f.Path, w, h, f.Type)
         break;
     case "image/png":
-        err = png.Encode(writer, resized)
+        err = resizePng(file, f.Path, w, h, f.Type)
         break;
     }
     if err != nil {
         return err
     }
+
+    return nil
+}
+
+func resizeJpeg(file io.Reader, path string, w int, h int, contentType string) error {
+    // decode jpeg into image.Image
+    img, err := jpeg.Decode(file)
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return err
+    }
+
+    // resize to width 1000 using Lanczos resampling
+    // and preserve aspect ratio
+    m := resize.Resize(uint(w), uint(h), img, resize.Lanczos3)
+
+    out, err := os.Create(path)
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return err
+    }
+    defer out.Close()
+
+    // write new image to file
+    jpeg.Encode(out, m, nil)
+
+    return nil
+}
+
+func resizePng(file io.Reader, path string, w int, h int, contentType string) error {
+    // decode jpeg into image.Image
+    img, err := png.Decode(file)
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return err
+    }
+
+    // resize to width 1000 using Lanczos resampling
+    // and preserve aspect ratio
+    m := resize.Resize(uint(w), uint(h), img, resize.Lanczos3)
+
+    out, err := os.Create(path)
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return err
+    }
+    defer out.Close()
+
+    // write new image to file
+    png.Encode(out, m)
 
     return nil
 }

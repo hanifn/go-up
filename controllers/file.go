@@ -5,17 +5,18 @@ import (
     "net/http"
     "fmt"
     "os"
-    "io"
     "bufio"
     "github.com/gorilla/mux"
     "github.com/hanifn/go-up/controllers/utils"
     "strings"
     "strconv"
+    "io"
 )
 
 func GetFiles(w http.ResponseWriter, req *http.Request) {
     files, err := models.GetFiles()
     if err != nil {
+        fmt.Printf("%v\n", err)
         utils.JsonError(w, err, 400)
         return
     }
@@ -35,33 +36,19 @@ func Upload(w http.ResponseWriter, req *http.Request) {
     }
     defer file.Close()
 
-    // create new file on filesystem
-    f, err := os.OpenFile("./storage/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-    if err != nil {
-        utils.JsonError(w, err, 400)
-        return
-    }
-    defer f.Close()
-
-    // copy uploaded file to new file
-    io.Copy(f, file)
-
+    hash := models.GenerateId();
     fileModel := models.NewFile(
         handler.Filename,
-        "./storage/"+handler.Filename,
+        hash,
+        "./storage/"+hash,
         handler.Header.Get("Content-Type"),
         req.FormValue("description"),
     )
 
-    err = fileModel.Save()
-    if err != nil {
-        utils.JsonError(w, err, 400)
-        return
-    }
-
     // check if user provided resize params
     resize := req.FormValue("resize")
     if resize != "" {
+        // resize image
         dimensions := strings.Split(resize, "x")
         width, err := strconv.Atoi(dimensions[0])
         if err != nil {
@@ -76,12 +63,31 @@ func Upload(w http.ResponseWriter, req *http.Request) {
             return
         }
 
-        err = fileModel.ResizeImage(width, height)
+        err = fileModel.ResizeImage(file, width, height)
         if err != nil {
             fmt.Printf("%v\n", err)
             utils.JsonError(w, "Error resizing file", 400)
             return
         }
+    } else {
+        // create new file on filesystem
+        f, err := os.OpenFile("./storage/"+hash, os.O_WRONLY|os.O_CREATE, 0666)
+        if err != nil {
+            utils.JsonError(w, err, 400)
+            return
+        }
+        defer f.Close()
+
+        // copy uploaded file to new file
+        io.Copy(f, file)
+    }
+
+    err = fileModel.Save()
+    if err != nil {
+        // delete file since saving failed
+        os.Remove(fileModel.Path)
+        utils.JsonError(w, err, 400)
+        return
     }
 
     utils.JsonResponse(w, fileModel)
