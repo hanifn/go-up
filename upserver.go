@@ -3,19 +3,17 @@ package main
 import (
     "log"
     "net/http"
-    "encoding/json"
+    "github.com/hanifn/go-up/routes"
+    "github.com/hanifn/go-up/controllers"
 )
 
 func main() {
-    router := NewRouter()
+    router := routes.NewRouter(controllers.NewFileController())
 
     log.Fatal(http.ListenAndServe(":8000", router))
-}
-
-func Index(w http.ResponseWriter, req *http.Request) {
-    json.NewEncoder(w).Encode("Nothing to see here")
 }
 
 type Error struct {
     message string
 }
+

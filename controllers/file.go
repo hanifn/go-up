@@ -13,7 +13,13 @@ import (
     "io"
 )
 
-func GetFiles(w http.ResponseWriter, req *http.Request) {
+type FileController struct {}
+
+func NewFileController() FileController {
+    return FileController{}
+}
+
+func (fc FileController) Index(w http.ResponseWriter, req *http.Request) {
     files, err := models.GetFiles()
     if err != nil {
         fmt.Printf("%v\n", err)
@@ -24,7 +30,7 @@ func GetFiles(w http.ResponseWriter, req *http.Request) {
     utils.JsonResponse(w, files)
 }
 
-func Upload(w http.ResponseWriter, req *http.Request) {
+func (fc FileController) Create(w http.ResponseWriter, req *http.Request) {
     // prep memory for file
     req.ParseMultipartForm(32 << 20)
 
@@ -93,7 +99,7 @@ func Upload(w http.ResponseWriter, req *http.Request) {
     utils.JsonResponse(w, fileModel)
 }
 
-func Download(w http.ResponseWriter, req *http.Request) {
+func (fc FileController) Read(w http.ResponseWriter, req *http.Request) {
     vars := mux.Vars(req)
 
     hash := vars["id"]
@@ -117,7 +123,10 @@ func Download(w http.ResponseWriter, req *http.Request) {
     br.WriteTo(w)
 }
 
-func Delete(w http.ResponseWriter, req *http.Request) {
+// delete method just to meet controller interface
+func (fc FileController) Update(w http.ResponseWriter, req *http.Request) {}
+
+func (fc FileController) Delete(w http.ResponseWriter, req *http.Request) {
     vars := mux.Vars(req)
 
     hash := vars["id"]
