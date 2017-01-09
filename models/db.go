@@ -32,7 +32,8 @@ func createTables(db *sql.DB) {
         name VARCHAR(64) NULL,
         path VARCHAR(64) NULL,
         type VARCHAR(64) NULL,
-        description TEXT NULL
+        description TEXT NULL,
+        awss3 BOOLEAN NOT NULL DEFAULT 0
 	);
 	`
 

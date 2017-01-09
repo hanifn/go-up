@@ -11,6 +11,10 @@ import (
     "strings"
     "strconv"
     "io"
+    "errors"
+    "github.com/hanifn/go-up/services"
+    "bytes"
+    "io/ioutil"
 )
 
 type FileController struct {}
@@ -55,24 +59,9 @@ func (fc FileController) Create(w http.ResponseWriter, req *http.Request) {
     resize := req.FormValue("resize")
     if resize != "" {
         // resize image
-        dimensions := strings.Split(resize, "x")
-        width, err := strconv.Atoi(dimensions[0])
+        err := fc.resizeImage(file, fileModel, resize)
         if err != nil {
-            fmt.Printf("%v\n", err)
-            utils.JsonError(w, "Error parsing resize dimensions", 400)
-            return
-        }
-        height, err := strconv.Atoi(dimensions[1])
-        if err != nil {
-            fmt.Printf("%v\n", err)
-            utils.JsonError(w, "Error parsing resize dimensions", 400)
-            return
-        }
-
-        err = fileModel.ResizeImage(file, width, height)
-        if err != nil {
-            fmt.Printf("%v\n", err)
-            utils.JsonError(w, "Error resizing file", 400)
+            utils.JsonError(w, err, 400)
             return
         }
     } else {
@@ -88,6 +77,27 @@ func (fc FileController) Create(w http.ResponseWriter, req *http.Request) {
         io.Copy(f, file)
     }
 
+    // check if upload to s3
+    upsertS3 := req.FormValue("upsert")
+    if upsertS3 != "" {
+        // open file as bytes
+        data, err := ioutil.ReadFile(fileModel.Path)
+        if err != nil {
+            utils.JsonError(w, err, 400)
+            return
+        }
+
+        err = services.UpsertToS3(fileModel.HashId, data, fileModel.Type)
+        if err != nil {
+            utils.JsonError(w, err, 400)
+            return
+        }
+
+        // set s3 flag
+        fileModel.AwsS3 = true
+        os.Remove(fileModel.Path)
+    }
+
     err = fileModel.Save()
     if err != nil {
         // delete file since saving failed
@@ -99,6 +109,28 @@ func (fc FileController) Create(w http.ResponseWriter, req *http.Request) {
     utils.JsonResponse(w, fileModel)
 }
 
+func (fc FileController) resizeImage(file io.Reader, fileModel models.File, resize string) error {
+    dimensions := strings.Split(resize, "x")
+    width, err := strconv.Atoi(dimensions[0])
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return errors.New("Error parsing resize dimensions")
+    }
+    height, err := strconv.Atoi(dimensions[1])
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return errors.New("Error parsing resize dimensions")
+    }
+
+    err = fileModel.ResizeImage(file, width, height)
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        return errors.New("Error resizing file")
+    }
+
+    return nil
+}
+
 func (fc FileController) Read(w http.ResponseWriter, req *http.Request) {
     vars := mux.Vars(req)
 
@@ -106,20 +138,38 @@ func (fc FileController) Read(w http.ResponseWriter, req *http.Request) {
 
     file, err := models.GetFile(hash)
     if err != nil {
+        fmt.Printf("%v\n", err)
         utils.JsonError(w, err, 404)
         return
     }
 
-    f, err := os.Open(file.Path)
-    if err != nil {
-        utils.JsonError(w, err, 400)
-        return
-    }
-    defer f.Close()
-
     w.Header().Add("Content-Type", file.Type)
 
-    br := bufio.NewReader(f)
+    var br *bufio.Reader
+    if file.AwsS3 {
+        // get from S3
+        data, err := services.DownloadFromS3(file.HashId)
+        if err != nil {
+            fmt.Printf("%v\n", err)
+            utils.JsonError(w, err, 400)
+            return
+        }
+
+        f := bytes.NewBuffer(data)
+        br = bufio.NewReader(f)
+    } else {
+        // get from file
+        f, err := os.Open(file.Path)
+        if err != nil {
+            fmt.Printf("%v\n", err)
+            utils.JsonError(w, err, 400)
+            return
+        }
+        defer f.Close()
+
+        br = bufio.NewReader(f)
+    }
+
     br.WriteTo(w)
 }
 
@@ -131,7 +181,18 @@ func (fc FileController) Delete(w http.ResponseWriter, req *http.Request) {
 
     hash := vars["id"]
 
-    err := models.DeleteFile(hash)
+    file, err := models.GetFile(hash)
+    if err != nil {
+        fmt.Printf("%v\n", err)
+        utils.JsonError(w, err, 404)
+        return
+    }
+
+    if file.AwsS3 {
+        err = services.RemoveFromS3(hash)
+    }
+
+    err = models.DeleteFile(hash)
     if err != nil {
         utils.JsonError(w, err, 400)
         return

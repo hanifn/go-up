@@ -18,6 +18,7 @@ type File struct {
     Path string `json:"-"`
     Type string `json:"-"`
     Description string `json:"description"`
+    AwsS3 bool `json:"-"`
 }
 
 type Files []File
@@ -46,7 +47,7 @@ func GetFile(hash string) (File, error) {
     row := conn.QueryRow(sql, hash)
 
     var file File
-    err := row.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type, &file.Description)
+    err := row.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type, &file.Description, &file.AwsS3)
     if err != nil {
         return File{}, err
     }
@@ -70,7 +71,7 @@ func GetFiles() ([]File, error) {
     var files []File
     for rows.Next() {
         file := File{}
-        err := rows.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type, &file.Description)
+        err := rows.Scan(&file.Id, &file.HashId, &file.Name, &file.Path, &file.Type, &file.Description, &file.AwsS3)
         if err != nil {
             return files, err
         }
@@ -166,8 +167,9 @@ func (f *File) insert() error {
 		name,
 		path,
 		type,
-		description
-	) values(?, ?, ?, ?, ?)
+		description,
+		awss3
+	) values(?, ?, ?, ?, ?, ?)
 	`
 
     stmt, err := conn.Prepare(sql)
@@ -177,7 +179,7 @@ func (f *File) insert() error {
     }
     defer stmt.Close()
 
-    result, err := stmt.Exec(f.HashId, f.Name, f.Path, f.Type, f.Description)
+    result, err := stmt.Exec(f.HashId, f.Name, f.Path, f.Type, f.Description, f.AwsS3)
     if err != nil {
         fmt.Printf("Insert exec error: %v\n", err)
         return err

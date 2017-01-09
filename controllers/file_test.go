@@ -8,15 +8,19 @@ import (
 	"testing"
 
 	"github.com/hanifn/go-up/routes"
+    "strings"
 )
 
 var (
 	server *httptest.Server
 	reader io.Reader //Ignore this for now
+    url string
 )
 
 func init() {
 	server = httptest.NewServer(routes.NewRouter(NewFileController()))
+
+    url = server.URL
 }
 
 func TestNewFileController(t *testing.T) {
@@ -24,7 +28,7 @@ func TestNewFileController(t *testing.T) {
 		name string
 		want FileController
 	}{
-	// TODO: Add test cases.
+        {"New Filecontroller", FileController{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -36,23 +40,19 @@ func TestNewFileController(t *testing.T) {
 }
 
 func TestFileController_Index(t *testing.T) {
-	type args struct {
-		w   http.ResponseWriter
-		req *http.Request
-	}
-	tests := []struct {
-		name string
-		fc   *FileController
-		args args
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fc := &FileController{}
-			fc.Index(tt.args.w, tt.args.req)
-		})
-	}
+    reader = strings.NewReader("")
+
+    w := httptest.NewRecorder()
+
+    req, err := http.NewRequest("GET", url+"/files", reader)
+    if err != nil {
+        t.Error(err)
+    }
+
+    t.Run("Test Get files", func(t *testing.T) {
+        fc := &FileController{}
+        fc.Index(w, req)
+    })
 }
 
 func TestFileController_Create(t *testing.T) {
