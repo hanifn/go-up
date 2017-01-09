@@ -48,12 +48,12 @@ bucket name details must be set as environment variables.
 
    Uploads a file as part of multi-part/form-data `POST` request.
    
-   |parameter   |value               |
-   |------------|--------------------|
-   |file        |file data           |
-   |description |Optional description|
-   |resize      |Optional. If set, server will try to resize image according to specified size. Format is `{width}x{height}`. E.g.: 120x120|
-   |upsert      |Optional. If set to anything except an empty string, will upload the file to specified S3 bucket. See AWS S3 section for setup details.
+   |parameter     |value               |
+   |--------------|--------------------|
+   |`file`        |file data           |
+   |`description` |Optional description|
+   |`resize`      |Optional. If set, server will try to resize image according to specified size. Format is `{width}x{height}`. E.g.: 120x120|
+   |`upsert`      |Optional. If set to anything except an empty string, will upload the file to specified S3 bucket. See AWS S3 section for setup details.
 
 - `GET /files`: Get a list of files
 - `GET /files/:id`: Download specific file
