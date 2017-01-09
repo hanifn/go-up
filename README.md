@@ -31,6 +31,16 @@ go-up
 ```
 The server will then start listening on port `8000`
 
+### AWS S3 Support
+If AWS S3 support is setup,  server will upload files to S3 bucket if
+the `upsert` parameter is set in the `/upload` `POST` request. Authentication and
+bucket name details must be set as environment variables.
+
+**ENVIRONMENT VARIABLES REQUIRED**
+- `AWS_ACCESS_KEY_ID` 
+- `AWS_SECRET_ACCESS_KEY`
+- `S3_BUCKET`
+
 ### REST API
 - `POST /uploads`: Uploads a file
 
@@ -41,6 +51,7 @@ The server will then start listening on port `8000`
    |file        |file data           |
    |description |Optional description|
    |resize      |Optional. If set, server will try to resize image according to specified size. Format is `{width}x{height}`. E.g.: 120x120|
+   |upsert      |Optional. If set to anything except an empty string, will upload the file to specified S3 bucket. See AWS S3 section for setup details.
 
 - `GET /files`: Get a list of files
 - `GET /files/:id`: Download specific file
