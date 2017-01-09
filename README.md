@@ -58,3 +58,9 @@ bucket name details must be set as environment variables.
 - `GET /files`: Get a list of files
 - `GET /files/:id`: Download specific file
 - `DELETE /files/:id`: Delete specific file
+
+### TODO
+- Set server listening port as a flag argument
+- An authentication system would be nice. Then we can limit uploads and
+file listings to only authed user
+- File compression?
