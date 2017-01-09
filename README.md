@@ -9,6 +9,8 @@ A File Upload server built on Go
 - github.com/mattn/go-sqlite3 
 - github.com/nfnt/resize
 - github.com/ventu-io/go-shortid
+- github.com/mitchellh/goamz
+- An Amazon AWS account with read/write access to an S3 bucket if you want to upload files to S3
 
 ### Installation
 Run the standard `go get` command:
