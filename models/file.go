@@ -19,11 +19,20 @@ type File struct {
     Type string `json:"-"`
     Description string `json:"description"`
     AwsS3 bool `json:"-"`
+    dbConn DbConnector
+}
+
+type FileModel struct {
+    dbConn DbConnector
 }
 
 type Files []File
 
-func NewFile(name string, hash string, path string, fileType string, desc string) File {
+func NewFileModel(conn DbConnector) FileModel {
+    return FileModel{dbConn: conn}
+}
+
+func (fm *FileModel) NewFile(name string, hash string, path string, fileType string, desc string) File {
     // default id to zero before saving to DB
     return File{
         Id: 0,
@@ -32,11 +41,13 @@ func NewFile(name string, hash string, path string, fileType string, desc string
         Path: path,
         Type: fileType,
         Description: desc,
+        dbConn: fm.dbConn,
     }
 }
 
-func GetFile(hash string) (File, error) {
-    conn := initDB()
+func (fm *FileModel) GetFile(hash string) (File, error) {
+    conn := fm.dbConn.initDB()
+    defer conn.Close()
 
     sql := `
     SELECT * FROM files
@@ -56,8 +67,9 @@ func GetFile(hash string) (File, error) {
 }
 
 
-func GetFiles() ([]File, error) {
-    conn := initDB()
+func (fm *FileModel) GetFiles() ([]File, error) {
+    conn := fm.dbConn.initDB()
+    defer conn.Close()
 
     sql := `
     SELECT * FROM files
@@ -82,8 +94,9 @@ func GetFiles() ([]File, error) {
     return files, nil
 }
 
-func DeleteFile(hash string) error {
-    conn := initDB()
+func (fm *FileModel) DeleteFile(hash string) error {
+    conn := fm.dbConn.initDB()
+    defer conn.Close()
 
     sql := `
     DELETE FROM files
@@ -131,7 +144,8 @@ func (f *File) Save() error {
     return nil
 }
 func (f *File) update() error {
-    conn := initDB()
+    conn := f.dbConn.initDB()
+    defer conn.Close()
 
     sql := `
     UPDATE files SET
@@ -159,7 +173,8 @@ func (f *File) update() error {
 }
 
 func (f *File) insert() error {
-    conn := initDB()
+    conn := f.dbConn.initDB()
+    defer conn.Close()
 
     sql := `
 	INSERT INTO files(

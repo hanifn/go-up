@@ -5,10 +5,16 @@ import (
     _ "github.com/mattn/go-sqlite3"
 )
 
-const path = "./storage/goup.db"
+type DbConnector struct {
+    path string
+}
 
-func initDB() *sql.DB {
-    db, err := sql.Open("sqlite3", path)
+func NewConnector(value string) DbConnector {
+    return DbConnector{path: value}
+}
+
+func (d *DbConnector) initDB() *sql.DB {
+    db, err := sql.Open("sqlite3", d.path)
 
     if err != nil {
         panic(err)
@@ -18,12 +24,12 @@ func initDB() *sql.DB {
     }
 
     // create tables
-    createTables(db)
+    d.createTables(db)
 
     return db
 }
 
-func createTables(db *sql.DB) {
+func (d *DbConnector) createTables(db *sql.DB) {
     // create table if not exists
     sqlTable := `
 	CREATE TABLE IF NOT EXISTS files(

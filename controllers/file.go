@@ -17,14 +17,19 @@ import (
     "io/ioutil"
 )
 
-type FileController struct {}
+const path = "./storage/goup.db"
+
+type FileController struct {
+    model models.FileModel
+}
 
 func NewFileController() FileController {
-    return FileController{}
+    conn := models.NewConnector(path)
+    return FileController{models.NewFileModel(conn)}
 }
 
 func (fc FileController) Index(w http.ResponseWriter, req *http.Request) {
-    files, err := models.GetFiles()
+    files, err := fc.model.GetFiles()
     if err != nil {
         fmt.Printf("%v\n", err)
         utils.JsonError(w, err, 400)
@@ -47,7 +52,7 @@ func (fc FileController) Create(w http.ResponseWriter, req *http.Request) {
     defer file.Close()
 
     hash := models.GenerateId();
-    fileModel := models.NewFile(
+    fileModel := fc.model.NewFile(
         handler.Filename,
         hash,
         "./storage/"+hash,
@@ -136,7 +141,7 @@ func (fc FileController) Read(w http.ResponseWriter, req *http.Request) {
 
     hash := vars["id"]
 
-    file, err := models.GetFile(hash)
+    file, err := fc.model.GetFile(hash)
     if err != nil {
         fmt.Printf("%v\n", err)
         utils.JsonError(w, err, 404)
@@ -181,7 +186,7 @@ func (fc FileController) Delete(w http.ResponseWriter, req *http.Request) {
 
     hash := vars["id"]
 
-    file, err := models.GetFile(hash)
+    file, err := fc.model.GetFile(hash)
     if err != nil {
         fmt.Printf("%v\n", err)
         utils.JsonError(w, err, 404)
@@ -192,7 +197,7 @@ func (fc FileController) Delete(w http.ResponseWriter, req *http.Request) {
         err = services.RemoveFromS3(hash)
     }
 
-    err = models.DeleteFile(hash)
+    err = fc.model.DeleteFile(hash)
     if err != nil {
         utils.JsonError(w, err, 400)
         return
